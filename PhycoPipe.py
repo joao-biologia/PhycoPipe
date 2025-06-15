@@ -16,8 +16,10 @@
 # ============================ #
 
 # Lybrary imports
-import os, subprocess, pandas as pd, platform, ezodf
+import os, subprocess, pandas as pd, platform, ezodf, re
 from pathlib import Path
+import matplotlib.pyplot as plt
+from matplotlib_venn import venn2, venn3
 
 print(f'\nBem vindo ao PhycoPipe, uma ferramenta simples para trabalhos com comunidades de macroalgas\n')
 
@@ -51,17 +53,18 @@ def tools_menu_loop():
 
         elif choice == '2':
             print(f'\nGerando resultados...\n')
-            nome_pasta = "PhycoPipe"
-            nome_arquivo = "Inputs.ods"
-            caminho_arquivo = criar_diretorio_em_documentos(nome_pasta) / nome_arquivo
-            tool_1(caminho_arquivo)
 
         elif choice == '3':
             print(f'\nGerando resultados...\n')
             nome_pasta = "PhycoPipe"
-            nome_arquivo = "Inputs.ods"
-            caminho_arquivo = criar_diretorio_em_documentos(nome_pasta) / nome_arquivo
-            tool_1(caminho_arquivo)
+            nome_arquivo_ods = "Inputs.ods"
+            nome_arquivo_saida = "Diagrama_de_Venn.png"
+
+            caminho_pasta = criar_diretorio_em_documentos(nome_pasta)
+            caminho_arquivo_ods = caminho_pasta / nome_arquivo_ods
+            caminho_arquivo_saida = caminho_pasta / nome_arquivo_saida
+
+            tool_1(caminho_arquivo_ods, caminho_arquivo_saida)
         
         else:
             print(f'\n\nInvalid choice. Please, try again.\n')
@@ -111,21 +114,15 @@ def abrir_arquivo(caminho):
     else:
         print("LibreOffice não encontrado no caminho padrão. Tente abrir manualmente ou verifique a instalação.")
 
-from matplotlib import pyplot as plt
-from matplotlib_venn import venn2, venn3
-import ezodf
-import re
-
 def limpar_taxon(taxon):
     if not isinstance(taxon, str):
         return ""
     return re.sub(r'\s*[_\.]?sp\.?', '', taxon, flags=re.IGNORECASE)
 
-def tool_1(caminho_arquivo_ods):
+def tool_1(caminho_arquivo_ods, caminho_arquivo):
     print(f"\n🔍 Lendo dados da planilha: {caminho_arquivo_ods}")
     doc = ezodf.opendoc(str(caminho_arquivo_ods))
     sheet = doc.sheets[0]
-
     dados = []
     for row in sheet.rows():
         linha = [cell.value if cell.value is not None else "" for cell in row]
@@ -144,7 +141,6 @@ def tool_1(caminho_arquivo_ods):
     nomes_taxons = [limpar_taxon(t) for t in nomes_taxons_originais]
 
     estratos_taxons = {}
-
     for linha in dados[idx_cabecalho+1:]:
         if len(linha) < 4:
             continue
@@ -168,22 +164,21 @@ def tool_1(caminho_arquivo_ods):
     nomes_estratos = [k for k, _ in conjuntos]
     sets = [v for _, v in conjuntos]
 
+    diversidades_alfa = [len(s) for s in sets]
+    nomes_com_alpha = [f"{nome}\nα = {alpha}" for nome, alpha in zip(nomes_estratos, diversidades_alfa)]
+
     if len(sets) == 2:
-        venn = venn2(sets, set_labels=nomes_estratos)
+        venn = venn2(sets, set_labels=nomes_com_alpha)
         region_keys = ['10', '01', '11']
     elif len(sets) == 3:
-        venn = venn3(sets, set_labels=nomes_estratos)
+        venn = venn3(sets, set_labels=nomes_com_alpha)
         region_keys = ['100', '010', '001', '110', '101', '011', '111']
     else:
         print("⚠️ O diagrama de Venn só suporta até 3 estratos.")
         return
 
-    # Lógica para descobrir os táxons de cada região do diagrama
     def get_region_taxa(key, sets):
         taxa = set()
-        for i in range(len(sets[0])):  # máximo número de táxons
-            # Vamos testar cada táxon individualmente
-            pass
         todos_taxons = set.union(*sets)
         for taxon in todos_taxons:
             presentes = [taxon in s for s in sets]
@@ -192,7 +187,6 @@ def tool_1(caminho_arquivo_ods):
                 taxa.add(taxon)
         return taxa
 
-    # Substitui os números pelas listas de táxons
     for key in region_keys:
         label = venn.get_label_by_id(key)
         if label:
@@ -200,61 +194,10 @@ def tool_1(caminho_arquivo_ods):
             texto = '\n'.join(sorted(taxa_na_regiao))
             label.set_text(texto)
 
-    plt.title("Distribuição dos Táxons por Estrato")
+    plt.title("Distribuição dos Táxons por Estrato\n")
     plt.tight_layout()
+    plt.savefig(caminho_arquivo, dpi=300)
     plt.show()
 
-import pandas as pd
-import ezodf
-import re
-from upsetplot import from_memberships, UpSet
-import matplotlib.pyplot as plt
-
-def limpar_taxon(taxon):
-    return re.sub(r'\s*[_\.]?sp\.?', '', str(taxon), flags=re.IGNORECASE)
-
-def tool_2(caminho_arquivo_ods):
-    # Abrir planilha ODS
-    ezodf.config.set_table_expand_strategy('all')
-    doc = ezodf.opendoc(str(caminho_arquivo_ods))
-    sheet = doc.sheets[0]
-
-    # Extrair os dados
-    dados = []
-    for row in sheet.rows():
-        dados.append([cell.value if cell.value is not None else "" for cell in row])
-
-    if len(dados) < 2:
-        print("❌ Planilha sem dados suficientes.")
-        return
-
-    cabecalhos = dados[0]
-    nomes_taxons = [limpar_taxon(t) for t in cabecalhos[3:]]
-
-    df = pd.DataFrame(dados[1:], columns=cabecalhos)
-
-    # Mapear presença de táxons por estrato
-    presencas = {}
-    for _, row in df.iterrows():
-        estrato = row[0]
-        if not estrato:
-            continue
-        for taxon, valor in zip(nomes_taxons, row[3:]):
-            if isinstance(valor, (int, float)) and valor > 0:
-                presencas.setdefault(taxon, set()).add(estrato)
-
-    # Gerar memberships para o UpSet plot
-    memberships = [tuple(sorted(v)) for v in presencas.values()]
-    upset_data = from_memberships(memberships)
-
-    # Plot
-    plt.figure(figsize=(10, 6))
-    UpSet(upset_data, show_counts=True).plot()
-    plt.title("Distribuição dos Táxons entre os Estratos")
-    plt.tight_layout()
-    plt.savefig(caminho_pasta, dpi=300)
-    plt.show()
-
-    
 if __name__ == "__main__":
     tools_menu_loop()
