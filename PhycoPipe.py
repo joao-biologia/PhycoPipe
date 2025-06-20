@@ -19,6 +19,7 @@
 import os, subprocess, pandas as pd, platform, ezodf, re, seaborn as sns, numpy as np
 from skbio.stats.distance import permanova, DistanceMatrix
 from skbio.diversity import beta_diversity
+from skbio.stats.ordination import pcoa
 from pathlib import Path
 import matplotlib.pyplot as plt
 from matplotlib_venn import venn2, venn3
@@ -33,6 +34,8 @@ def tools_menu():
     print(f'(2) Visualizar DataFrame')
     print(f'(3) Diagrama de Venn')
     print(f'(4) Shade plot')
+    print(f'(5) Análise PERMANOVA')
+    print()
 
 def tools_menu_loop():    
     while True:
@@ -61,6 +64,13 @@ def tools_menu_loop():
         elif choice == '5':
             print(f'\nRealizando análise PERMANOVA...\n')
             tool_3()
+        
+        elif choice == '6':
+            tool_4()
+            
+        elif choice == '7':
+            print(f'\nCalculando índices de diversidade...\n')
+            tool_5()
             
         else:
             print(f'\n\nEscolha inválida.\n')
@@ -125,7 +135,7 @@ def tool_1():
         venn = venn3(sets, set_labels=nomes_com_alpha)
         region_keys = ['100', '010', '001', '110', '101', '011', '111']
     else:
-        print("⚠️ O diagrama de Venn só suporta 2 ou 3 estratos.")
+        print("O diagrama de Venn só suporta 2 ou 3 estratos.")
         return
     def get_region_taxa(key, sets):
         taxa = set()
@@ -183,10 +193,74 @@ def tool_3():
     try:
         dist_matrix = beta_diversity("braycurtis", abundancia, ids=abundancia.index)
         resultado = permanova(distance_matrix=dist_matrix, grouping=grupos, permutations=999)
-        print("\n🔬 Resultado da PERMANOVA:")
+        print("\nResultado da PERMANOVA:")
         print(resultado)
+        with open(caminho_pasta / "permanova_resultado.txt", "w") as f:
+            f.write(str(resultado))
     except Exception as e:
-        print(f"❌ Erro ao executar PERMANOVA: {e}")
+        print(f"Erro ao executar PERMANOVA: {e}")
 
+def tool_4():
+
+    zona_col = next((col for col in df.columns if "estrato" in col.lower()), df.columns[0])
+
+    colunas_excluir = [zona_col, 'Repetição', 'Área_amostrada']
+    colunas_taxons = [col for col in df.columns if col not in colunas_excluir]
+
+    abundancia = df[colunas_taxons].fillna(0).copy()
+    grupos = df[zona_col].astype(str).copy()
+
+    abundancia.index = df.index.astype(str)
+    grupos.index = df.index.astype(str)
+
+    try:
+        dist_matrix = beta_diversity("braycurtis", abundancia, ids=abundancia.index)
+        pcoa_result = pcoa(dist_matrix)
+        coords = pcoa_result.samples.iloc[:, 0:2]  # PC1 e PC2
+
+        coords = coords.copy()
+        coords[zona_col] = grupos.values
+
+
+        plt.figure(figsize=(8, 6))
+        sns.scatterplot(data=coords, x=coords.columns[0], y=coords.columns[1],
+                        hue=zona_col, palette="Set2", s=100, edgecolor='k')
+        plt.xlabel(f"PCoA 1 ({pcoa_result.proportion_explained.iloc[0]*100:.1f}%)")
+        plt.ylabel(f"PCoA 2 ({pcoa_result.proportion_explained.iloc[1]*100:.1f}%)")
+        plt.title("PCoA - Bray-Curtis")
+        plt.axhline(0, color='gray', lw=0.5)
+        plt.axvline(0, color='gray', lw=0.5)
+        plt.tight_layout()
+        plt.savefig(caminho_pasta / "PCoA_plot.png", dpi=300)
+
+    except Exception as e:
+        print(f"Erro ao executar PCoA: {e}")
+        
+from skbio.diversity.alpha import shannon, simpson
+
+def tool_5():
+    zona_col = next((col for col in df.columns if "estrato" in col.lower()), df.columns[0])
+    colunas_excluir = [zona_col, 'Repetição', 'Área_amostrada']
+    colunas_taxons = [col for col in df.columns if col not in colunas_excluir]
+    resultados = []
+    for zona, grupo in df.groupby(zona_col):
+        matriz_abundancia = grupo[colunas_taxons].fillna(0).astype(float)
+        alfa_riqueza = (matriz_abundancia > 0).sum(axis=1).mean()
+        gama = (matriz_abundancia.sum(axis=0) > 0).sum()
+        beta = gama / alfa_riqueza if alfa_riqueza > 0 else 0
+        shannon_med = matriz_abundancia.apply(lambda row: shannon(row.values, base=np.e), axis=1).mean()
+        simpson_med = matriz_abundancia.apply(lambda row: simpson(row.values), axis=1).mean()
+        resultados.append({
+            "Zona": zona,
+            "Alfa (riqueza média)": round(alfa_riqueza, 2),
+            "Beta (Whittaker)": round(beta, 2),
+            "Gama (riqueza total)": gama,
+            "Índice de Shannon (médio)": round(shannon_med, 3),
+            "Índice de Simpson (médio)": round(simpson_med, 3)
+        })
+    resultados_df = pd.DataFrame(resultados)
+    print("\nÍndices de diversidade por zona:\n")
+    print(resultados_df.to_string(index=False))
+        
 if __name__ == "__main__":
     tools_menu_loop()
