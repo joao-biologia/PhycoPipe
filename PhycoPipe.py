@@ -35,7 +35,8 @@ def tools_menu():
     print(f'(3) Diagrama de Venn')
     print(f'(4) Shade plot')
     print(f'(5) Análise PERMANOVA')
-    print()
+    print(f'(6) PCoA')
+    print(f'(7) Índices de diversidade')
 
 def tools_menu_loop():    
     while True:
@@ -66,6 +67,7 @@ def tools_menu_loop():
             tool_3()
         
         elif choice == '6':
+            print(f'Performando PCoA...\n')
             tool_4()
             
         elif choice == '7':
