@@ -1,65 +1,83 @@
-import os, subprocess, pandas as pd, platform, ezodf, re, seaborn as sns, numpy as np
-from skbio.stats.distance import permanova, DistanceMatrix
+import pandas as pd
+import numpy as np
+from pathlib import Path
+from skbio.diversity.alpha import shannon, simpson
 from skbio.diversity import beta_diversity
 from skbio.stats.ordination import pcoa
-from pathlib import Path
-import matplotlib.pyplot as plt
-from matplotlib_venn import venn2, venn3
-from skbio.diversity.alpha import shannon, simpson
-from scipy.stats import entropy
+from skbio.stats.distance import DistanceMatrix
+from scipy.spatial.distance import pdist, squareform
+import ezodf
+
+def calcular_indices_por_zona(df, colunas_especies):
+    
+    zonas_ordenadas = ["zona superior oeste", "zona superior leste", "zona intermediaria oeste", "zona intermediaria leste", "zona inferior oeste", "zona inferior leste"]
+    df["Estrato_(Zona)"] = pd.Categorical(df["Estrato_(Zona)"], categories=zonas_ordenadas, ordered=True)
+    df_agg = df.groupby("Estrato_(Zona)")[colunas_especies].sum()
+    resultados = []
+
+    for zona in zonas_ordenadas:
+        
+        abundancias = df_agg.loc[zona].values
+        abundancias = abundancias[abundancias > 0]
+        p = abundancias / abundancias.sum()
+        shannon = -np.sum(p * np.log(p))
+        S = len(abundancias)
+        equitabilidade = shannon / np.log(S) if S > 1 else np.nan
+        dominancia = np.sum(p ** 2)
+        simpson = 1 - dominancia
+
+        resultados.append({
+            "Comunidade": zona,
+            "Shannon (H')": shannon,
+            "Equitabilidade (E)": equitabilidade,
+            "Simpson (1-D)": simpson,
+            "Dominância (D)": dominancia
+        })
+
+    return pd.DataFrame(resultados)
 
 def tool_6():
     
     caminho_pasta = Path.home() / "Documents" / "PhycoPipe"
-    caminho_input = caminho_pasta / "abundancia2.ods"
-    caminho_indice = caminho_pasta / "indice2.ods"
-    df = pd.read_excel(str(caminho_input), sheet_name='Área de cobertura', header=1, engine='odf')
-    print(df)
+    caminho_input = caminho_pasta / "Inputs3.ods"
+    caminho_saida = caminho_pasta / "indice_diversidade.ods"
 
-    def shannon_index(row):
-        data = row[row > 0]
-        total = data.sum()
-        proportions = data / total
-        return entropy(proportions, base=np.e)
+    df = pd.read_excel(str(caminho_input), sheet_name='Área de cobertura', header=2, engine='odf')
 
-    def riqueza(row):
-        return (row > 0).sum()
+    colunas_especies = df.columns[3:]
 
-    def calcular_diversidades(df):
-        zonas = df['Estrato_(Zona)'].unique()
-        resultados = []
+    df["Riqueza"] = (df[colunas_especies] > 0).sum(axis=1)
 
-        for zona in zonas:
-            df_zona = df[df['Estrato_(Zona)'] == zona]
-            dados_abundancia = df_zona.iloc[:, 2:]  # Dados das espécies
+    riqueza_zona = (df[colunas_especies] > 0).groupby(df["Estrato_(Zona)"]).any().sum(axis=1)
+    df["Riqueza (S)"] = df["Estrato_(Zona)"].map(riqueza_zona)
 
-            # Diversidade alfa (média de Shannon por linha)
-            alfa = dados_abundancia.apply(shannon_index, axis=1).mean()
+    gama_total = (df[colunas_especies] > 0).any().sum()
+    df["Div. Gama"] = gama_total
+    
+    zonas_ordenadas = ["zona superior oeste", "zona superior leste", "zona intermediaria oeste", "zona intermediaria leste", "zona inferior oeste", "zona inferior leste"]
+    df["Estrato_(Zona)"] = pd.Categorical(df["Estrato_(Zona)"], categories=zonas_ordenadas, ordered=True)
 
-            # Diversidade gama (Shannon da soma total da zona)
-            soma_total = dados_abundancia.sum()
-            gama = shannon_index(soma_total)
+    df["Div. Alfa"] = df["Riqueza"]
+    df["Comunidade"] = df["Estrato_(Zona)"]
+    
+    df_zona = df.groupby("Comunidade").agg({
+    "Riqueza (S)": "first",
+    "Div. Gama": "first",
+    "Div. Alfa": "mean"
+    }).reset_index()
+    df_zona["Div. Beta"] = df_zona["Div. Gama"] / df_zona["Div. Alfa"]
 
-            # Diversidade beta (Whittaker: beta = gama / alfa)
-            beta = gama / alfa if alfa != 0 else np.nan
+    indices_zonas = calcular_indices_por_zona(df, colunas_especies)
 
-            resultados.append({
-                'Zona': zona,
-                'Diversidade_Alfa': round(alfa, 4),
-                'Diversidade_Gama': round(gama, 4),
-                'Diversidade_Beta': round(beta, 4)
-            })
+    print(df[["Comunidade", "Repetição", "Riqueza", "Riqueza (S)", "Div. Gama"]])
+    print(df_zona[["Comunidade", "Riqueza (S)", "Div. Gama", "Div. Alfa", "Div. Beta"]])
+    print(indices_zonas)
+    
+    with pd.ExcelWriter(caminho_saida, engine='odf') as writer:
+        df.to_excel(writer, sheet_name='Dados_Completos', index=False)
+        df_zona.to_excel(writer, sheet_name='Resumo_Zonas', index=False)
+        indices_zonas.to_excel(writer, sheet_name='Indices_Zonas', index=False)
+        
+    print(f'\nResultados salvos em {caminho_saida}\n')
 
-        return pd.DataFrame(resultados)
-
-    # Calcular as diversidades
-    df_resultado = calcular_diversidades(df)
-
-    # Salvar em .ods
-    from pandas import ExcelWriter
-
-    output_path = 'diversidades.ods'
-    with ExcelWriter(output_path, engine='odf') as writer:
-        df_resultado.to_excel(writer, index=False, sheet_name='Diversidade')
-
-    print(f"Arquivo '{output_path}' salvo com sucesso.")
+tool_6()

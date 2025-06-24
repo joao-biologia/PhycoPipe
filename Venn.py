@@ -15,6 +15,7 @@ def tool_1():
     
     nomes_taxons = [re.sub(r'\s*[_\.]?[Ss][Pp]\.?$', '', col).strip() for col in df.columns[3:]]
     estratos_taxons = {}
+    
     for _, linha in df.iterrows():
         estrato = linha.iloc[0]
         if pd.isna(estrato) or str(estrato).strip() == "":
@@ -28,9 +29,11 @@ def tool_1():
                     estratos_taxons[estrato].add(nomes_taxons[i])
             except:
                 continue
+            
     if not estratos_taxons:
         print("Nenhum dado válido encontrado para gerar o diagrama.")
         return
+    
     for k, v in estratos_taxons.items():
         print(f"{k}: {sorted(v)}")
     conjuntos = list(estratos_taxons.items())
@@ -38,6 +41,7 @@ def tool_1():
     sets = [v for _, v in conjuntos]
     diversidades_alfa = [len(s) for s in sets]
     nomes_com_alpha = [f"{nome}\nα = {alpha}" for nome, alpha in zip(nomes_estratos, diversidades_alfa)]
+    
     if len(sets) == 2:
         venn = venn2(sets, set_labels=nomes_com_alpha)
         region_keys = ['10', '01', '11']
@@ -47,6 +51,7 @@ def tool_1():
     else:
         print("O diagrama de Venn só suporta 2 ou 3 estratos.")
         return
+    
     def get_region_taxa(key, sets):
         taxa = set()
         todos_taxons = set.union(*sets)
@@ -56,12 +61,14 @@ def tool_1():
             if binario == key:
                 taxa.add(taxon)
         return taxa
+    
     for key in region_keys:
         label = venn.get_label_by_id(key)
         if label:
             taxa_na_regiao = get_region_taxa(key, sets)
             texto = '\n'.join(sorted(taxa_na_regiao))
             label.set_text(texto)
+            
     plt.title("Distribuição dos Táxons por Estrato\n")
     plt.tight_layout()
     plt.savefig(caminho_venn, dpi=300)

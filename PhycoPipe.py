@@ -79,15 +79,10 @@ def tools_menu_loop():
             PCoA.tool_4()
             
         elif choice == '7':
-            print(f'\nCalculando índices de heterogeneidade...\n')
-            import Indices
-            Indices.tool_5()
-            
-        elif choice == '8':
-            print(f'\nCalculando índices de diversidade...\n')
+            print(f'\nCalculando índices de diversidade, heterogeneidade e dissimilaridade...\n')
             import Indices2
             Indices2.tool_6()
-            
+
         else:
             print(f'\n\nEscolha inválida.\n')
 
