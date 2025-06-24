@@ -27,7 +27,7 @@ def tool_4():
     try:
         dist_matrix = beta_diversity("braycurtis", abundancia, ids=abundancia.index)
         pcoa_result = pcoa(dist_matrix)
-        coords = pcoa_result.samples.iloc[:, 0:2]  # PC1 e PC2
+        coords = pcoa_result.samples.iloc[:, 0:2]
 
         coords = coords.copy()
         coords[zona_col] = grupos.values
