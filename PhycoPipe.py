@@ -37,8 +37,8 @@ def tools_menu():
     print(f'(4) Shade plot')
     print(f'(5) Análise PERMANOVA')
     print(f'(6) PCoA')
-    print(f'(7) Indices de Heterogeneidade')
-    print(f'(8) Indices de Diversidade')
+    print(f'(7) Indices de Diversidade e Heterogeneidade')
+    print(f'(8) Dendrograma')
 
 def tools_menu_loop():    
     
@@ -79,9 +79,14 @@ def tools_menu_loop():
             PCoA.tool_4()
             
         elif choice == '7':
-            print(f'\nCalculando índices de diversidade, heterogeneidade e dissimilaridade...\n')
+            print(f'\nCalculando índices de diversidade e heterogeneidade...\n')
             import Indices2
             Indices2.tool_6()
+            
+        elif choice == '8':
+            print(f'\nGerando dendograma...\n')
+            import Dendrograma
+            Dendrograma.tool_7()
 
         else:
             print(f'\n\nEscolha inválida.\n')

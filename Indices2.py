@@ -80,4 +80,3 @@ def tool_6():
         
     print(f'\nResultados salvos em {caminho_saida}\n')
 
-tool_6()
