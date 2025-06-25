@@ -49,10 +49,7 @@ def tool_6():
     df["Riqueza"] = (df[colunas_especies] > 0).sum(axis=1)
 
     riqueza_zona = (df[colunas_especies] > 0).groupby(df["Estrato_(Zona)"]).any().sum(axis=1)
-    df["Riqueza (S)"] = df["Estrato_(Zona)"].map(riqueza_zona)
-
-    gama_total = (df[colunas_especies] > 0).any().sum()
-    df["Div. Gama"] = gama_total
+    df["Div. Gama"] = df["Estrato_(Zona)"].map(riqueza_zona)
     
     zonas_ordenadas = ["zona superior oeste", "zona superior leste", "zona intermediaria oeste", "zona intermediaria leste", "zona inferior oeste", "zona inferior leste"]
     df["Estrato_(Zona)"] = pd.Categorical(df["Estrato_(Zona)"], categories=zonas_ordenadas, ordered=True)
@@ -61,7 +58,6 @@ def tool_6():
     df["Comunidade"] = df["Estrato_(Zona)"]
     
     df_zona = df.groupby("Comunidade").agg({
-    "Riqueza (S)": "first",
     "Div. Gama": "first",
     "Div. Alfa": "mean"
     }).reset_index()
@@ -69,8 +65,8 @@ def tool_6():
 
     indices_zonas = calcular_indices_por_zona(df, colunas_especies)
 
-    print(df[["Comunidade", "Repetição", "Riqueza", "Riqueza (S)", "Div. Gama"]])
-    print(df_zona[["Comunidade", "Riqueza (S)", "Div. Gama", "Div. Alfa", "Div. Beta"]])
+    print(df[["Comunidade", "Repetição", "Riqueza", "Div. Gama"]])
+    print(df_zona[["Comunidade", "Div. Gama", "Div. Alfa", "Div. Beta"]])
     print(indices_zonas)
     
     with pd.ExcelWriter(caminho_saida, engine='odf') as writer:
@@ -80,3 +76,4 @@ def tool_6():
         
     print(f'\nResultados salvos em {caminho_saida}\n')
 
+tool_6()
