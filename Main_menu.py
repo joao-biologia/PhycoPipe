@@ -27,6 +27,35 @@ from skbio.diversity.alpha import shannon, simpson
 
 print(f'\nBem vindo ao PhycoPipe, uma ferramenta simples para trabalhos com comunidades de macroalgas\n')
 
+caminho_pasta = Path.home() / "Documents" / "PhycoPipe"
+caminho_input = caminho_pasta / "Inputs.ods"
+
+make_dirs = True
+if make_dirs:
+    try:
+        os.makedirs(os.path.join(Path.home(), "Documents", "PhycoPipe"))
+    except FileExistsError:
+        pass
+
+caminho_pasta.mkdir(parents=True, exist_ok=True)
+ezodf.config.set_table_expand_strategy('all')
+
+if not caminho_input.exists():
+    planilha = ezodf.newdoc(doctype="ods", filename=str(caminho_input))
+    folha = ezodf.Sheet('Área de cobertura', size=(30, 15))
+    planilha.sheets += folha
+
+    cabecalhos = [
+        "Amostra", "Repetição", "Área_amostrada",
+        "Taxon 1", "Taxon 2", "Taxon 3"
+    ]
+    for col, valor in enumerate(cabecalhos):
+        folha[0, col].set_value(valor)
+
+    planilha.save()
+
+df = pd.read_excel(str(caminho_input), sheet_name='Área de cobertura', header=0, engine='odf')
+
 # Main menu
 def tools_menu():
     print(f'\n---- Tools Menu ----')
@@ -35,7 +64,6 @@ def tools_menu():
     print(f'(2) Visualizar DataFrame')
     print(f'(3) Diagrama de Venn')
     print(f'(4) Shade plot')
-    print(f'(5) Análise PERMANOVA')
     print(f'(6) PCoA')
     print(f'(7) Indices de Diversidade e Heterogeneidade')
     print(f'(8) Dendrograma')
@@ -49,29 +77,22 @@ def tools_menu_loop():
         
         if  choice == '0':
             print(f'\nEncerrando...\n')
-            break
+            exit()
 
         elif choice == '1':
-            criar_planilha_ods()
             print("Preencha a tabela no LibreOffice e salve para uso posterior.\n")
             
         elif choice == '2':
+            print("\n\n")
             print(df)
 
         elif choice == '3':
-            print(f'\nGerando resultados...\n')
-            import Venn
-            Venn.tool_1()
+            print(f'\nPresente apenas para terminal R...\n')
             
         elif choice == '4':
             print(f'\nGerando resultados...\n')
             import Shade_plot
             Shade_plot.tool_2()
-        
-        elif choice == '5':
-            print(f'\nRealizando análise PERMANOVA...\n')
-            import permanova
-            permanova.tool_3()
         
         elif choice == '6':
             print(f'Performando PCoA...\n')
@@ -90,32 +111,6 @@ def tools_menu_loop():
 
         else:
             print(f'\n\nEscolha inválida.\n')
-
-caminho_pasta = Path.home() / "Documents" / "PhycoPipe"
-caminho_input = caminho_pasta / "Inputs.ods"
-df = pd.read_excel(str(caminho_input), sheet_name='Área de cobertura', header=2, engine='odf')
-
-def criar_planilha_ods():
-    caminho_pasta.mkdir(parents=True, exist_ok=True)
-    ezodf.config.set_table_expand_strategy('all')
-    if not caminho_input.exists():
-        planilha = ezodf.newdoc(doctype="ods", filename=str(caminho_input))
-        folha = ezodf.Sheet('Área de cobertura', size=(30, 15))
-        planilha.sheets += folha
-
-        folha[0, 0].set_value("Área de cobertura (m²)")
-        grupos = ["", "", "", "Chlorophyta", "Rhodophyta", "Phaeophyta"]
-        for col, valor in enumerate(grupos):
-            folha[1, col].set_value(valor)
-
-        cabecalhos = [
-            "Estrato (...)", "Repetição", "Área_amostrada",
-            "Taxon 1", "Taxon 2", "Taxon 3"
-        ]
-        for col, valor in enumerate(cabecalhos):
-            folha[2, col].set_value(valor)
-
-        planilha.save()
     
 if __name__ == "__main__":
     tools_menu_loop()

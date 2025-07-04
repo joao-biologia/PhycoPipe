@@ -13,13 +13,13 @@ from scipy.cluster.hierarchy import linkage, dendrogram
 def tool_8():
     
     caminho_pasta = Path.home() / "Documents" / "PhycoPipe"
-    caminho_input = caminho_pasta / "Inputs3.ods"
+    caminho_input = caminho_pasta / "Inputs.ods"
     caminho_saida = caminho_pasta / "Dendrograma.png"
-    df = pd.read_excel(str(caminho_input), sheet_name='Área de cobertura', header=2, engine='odf')
+    df = pd.read_excel(str(caminho_input), sheet_name='Área de cobertura', header=0, engine='odf')
     print(df)
 
     colunas_especies = df.columns[3:]
-    df_zonas = df.groupby("Estrato_(Zona)")[colunas_especies].sum()
+    df_zonas = df.groupby("Amostra")[colunas_especies].sum()
 
     presenca_ausencia = (df_zonas > 0).astype(int)
     dist_presenca = pdist(presenca_ausencia, metric='jaccard')
@@ -40,6 +40,7 @@ def tool_8():
 
     plt.tight_layout()
     plt.savefig(caminho_saida, dpi=300)
+    plt.show()
 
     print("\nMatriz de presença/ausência (binária):")
     print(presenca_ausencia)
@@ -55,9 +56,12 @@ def tool_8():
 
     print("\nMatriz de linkage (Presença/Ausência):")
     print(Z_presenca)
+    print()
     print(df_zonas.index)
     
     print("\nMatriz de linkage (Abundância):")
     print(Z_abundancia)
+    print()
     print(df_zonas.index)
 
+tool_8()

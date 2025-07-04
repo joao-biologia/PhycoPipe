@@ -11,8 +11,8 @@ import ezodf
 def calcular_indices_por_zona(df, colunas_especies):
     
     zonas_ordenadas = ["zona superior oeste", "zona superior leste", "zona intermediaria oeste", "zona intermediaria leste", "zona inferior oeste", "zona inferior leste"]
-    df["Estrato_(Zona)"] = pd.Categorical(df["Estrato_(Zona)"], categories=zonas_ordenadas, ordered=True)
-    df_agg = df.groupby("Estrato_(Zona)")[colunas_especies].sum()
+    df["Amostra"] = pd.Categorical(df["Amostra"], categories=zonas_ordenadas, ordered=True)
+    df_agg = df.groupby("Amostra")[colunas_especies].sum()
     resultados = []
 
     for zona in zonas_ordenadas:
@@ -39,23 +39,23 @@ def calcular_indices_por_zona(df, colunas_especies):
 def tool_6():
     
     caminho_pasta = Path.home() / "Documents" / "PhycoPipe"
-    caminho_input = caminho_pasta / "Inputs3.ods"
+    caminho_input = caminho_pasta / "Inputs.ods"
     caminho_saida = caminho_pasta / "indice_diversidade.ods"
 
-    df = pd.read_excel(str(caminho_input), sheet_name='Área de cobertura', header=2, engine='odf')
+    df = pd.read_excel(str(caminho_input), sheet_name='Área de cobertura', header=0, engine='odf')
 
     colunas_especies = df.columns[3:]
 
     df["Riqueza"] = (df[colunas_especies] > 0).sum(axis=1)
 
-    riqueza_zona = (df[colunas_especies] > 0).groupby(df["Estrato_(Zona)"]).any().sum(axis=1)
-    df["Div. Gama"] = df["Estrato_(Zona)"].map(riqueza_zona)
+    riqueza_zona = (df[colunas_especies] > 0).groupby(df["Amostra"]).any().sum(axis=1)
+    df["Div. Gama"] = df["Amostra"].map(riqueza_zona)
     
     zonas_ordenadas = ["zona superior oeste", "zona superior leste", "zona intermediaria oeste", "zona intermediaria leste", "zona inferior oeste", "zona inferior leste"]
-    df["Estrato_(Zona)"] = pd.Categorical(df["Estrato_(Zona)"], categories=zonas_ordenadas, ordered=True)
+    df["Amostra"] = pd.Categorical(df["Amostra"], categories=zonas_ordenadas, ordered=True)
 
     df["Div. Alfa"] = df["Riqueza"]
-    df["Comunidade"] = df["Estrato_(Zona)"]
+    df["Comunidade"] = df["Amostra"]
     
     df_zona = df.groupby("Comunidade").agg({
     "Div. Gama": "first",
