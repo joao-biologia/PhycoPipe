@@ -41,5 +41,23 @@ def tool_8():
     plt.tight_layout()
     plt.savefig(caminho_saida, dpi=300)
 
+    print("\nMatriz de presença/ausência (binária):")
+    print(presenca_ausencia)
 
+    print("\nMatriz de distâncias (Jaccard - Presença/Ausência):")
+    print(squareform(dist_presenca))
+
+    print("\nMatriz de abundância (soma das espécies por zona):")
+    print(df_zonas)
+
+    print("\nMatriz de distâncias (Bray-Curtis - Abundância):")
+    print(squareform(dist_abundancia))
+
+    print("\nMatriz de linkage (Presença/Ausência):")
+    print(Z_presenca)
+    print(df_zonas.index)
+    
+    print("\nMatriz de linkage (Abundância):")
+    print(Z_abundancia)
+    print(df_zonas.index)
 
